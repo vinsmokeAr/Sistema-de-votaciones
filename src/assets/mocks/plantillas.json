@@ -1,0 +1,139 @@
+{
+ "rows": [
+  {
+   "id": 1,
+   "title": "¿Estás de acuerdo con esta afirmación?",
+   "icon": "twemoji:writing-hand",
+   "opciones": [
+    {
+     "title": "Sí",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "No",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Tal vez",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "title": "¿Cuál de estas opciones prefieres?",
+   "icon": "twemoji:writing-hand",
+   "opciones": [
+    {
+     "title": "Opción 1",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Opción 2",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Opción 3",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "title": "¿Qué tan satisfecho estás con este servicio?",
+   "icon": "twemoji:writing-hand",
+   "opciones": [
+    {
+     "title": "Muy satisfecho",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Satisfecho",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Neutral",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Insatisfecho",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Muy insatisfecho",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "title": "¿Recomendarías este producto?",
+   "icon": "twemoji:writing-hand",
+   "opciones": [
+    {
+     "title": "Definitivamente sí",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Probablemente sí",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "No estoy seguro",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Probablemente no",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Definitivamente no",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "title": "¿Qué tan probable es que participes en este evento?",
+   "icon": "twemoji:writing-hand",
+   "opciones": [
+    {
+     "title": "Muy probable",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Probable",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Poco probable",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    },
+    {
+     "title": "Nada probable",
+     "image": "/src/assets/images/opc.jpg",
+     "votes": 0
+    }
+   ]
+  }
+ ]
+}
