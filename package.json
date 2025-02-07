@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.10",
-    "axios": "^1.6.7",
+    "axios": "^1.7.9",
     "bootstrap": "^5.3.3",
-    "pinia": "^2.2.4",
+    "pinia": "^2.3.1",
+    "vue": "^3.5.10",
     "vue-router": "^4.4.5",
     "vue3-cookies": "^1.0.6"
   },
