@@ -136,7 +136,10 @@ export const useSurveyStore = defineStore('survey', () => {
     loading.value = true;
     error.value = '';
 
-    const surveyData = prepareSurveyData();
+    const surveyData = {
+      ...prepareSurveyData(),
+      state: 'enabled' // Aseguramos que se guarde como enabled
+    };
 
     const request = isEditing.value && currentSurvey.value.uuid
       ? axiosInstance.put(`/api/admin/surveys/${currentSurvey.value.uuid}`, surveyData)
@@ -148,7 +151,8 @@ export const useSurveyStore = defineStore('survey', () => {
           if (!isEditing.value) {
             currentSurvey.value = {
               ...currentSurvey.value,
-              uuid: data.data.uuid
+              uuid: data.data.uuid,
+              state: 'enabled'
             };
             isEditing.value = true;
           }
@@ -193,7 +197,7 @@ export const useSurveyStore = defineStore('survey', () => {
       uuid: null, // Asegurarse que el uuid sea null
       name: template.title || 'Nueva Encuesta',
       description: '',
-      state: 'pending',
+      state: 'enabled', // Cambiado de 'pending' a 'enabled'
       icon: template.icon || 'twemoji:writing-hand',
       choices: template.opciones?.map(opcion => ({
         id: null, // Asegurarse que los ids sean null
@@ -241,15 +245,50 @@ export const useSurveyStore = defineStore('survey', () => {
       uuid: null,
       name: '',
       description: '',
-      state: 'pending',
+      state: 'enabled', // Cambiado de 'pending' a 'enabled'
       icon: 'twemoji:writing-hand',
       choices: []
     };
     currentSurvey.value = { ...emptySurvey };
-    // Limpiar también el array de opciones a eliminar
     choicesToDelete.value = [];
     isEditing.value = false;
     error.value = '';
+  }
+
+  function finalizarEncuesta(surveyId) {
+    loading.value = true;
+    error.value = '';
+
+    return axiosInstance.put(`/api/admin/surveys/${surveyId}`, {
+      state: 'disabled'
+    })
+      .then(({ data }) => {
+        if (data.status === 'success') {
+          // Actualizar el estado en la encuesta actual si corresponde
+          if (currentSurvey.value.uuid === surveyId) {
+            currentSurvey.value = {
+              ...currentSurvey.value,
+              state: 'disabled'
+            };
+          }
+
+          // Actualizar el estado en las encuestas recientes
+          const index = recentSurveys.value.findIndex(s => s.survey_uuid === surveyId);
+          if (index !== -1) {
+            recentSurveys.value[index].current_state = 'disabled';
+          }
+
+          return true;
+        }
+        throw new Error(data.message || 'Error al finalizar la encuesta');
+      })
+      .catch((err) => {
+        error.value = err.response?.data?.message || 'Error al finalizar la encuesta';
+        throw err;
+      })
+      .finally(() => {
+        loading.value = false;
+      });
   }
 
   return {
@@ -268,6 +307,7 @@ export const useSurveyStore = defineStore('survey', () => {
     addChoice,
     removeChoice,
     clearCurrentSurvey,
-    initializeFromTemplate
+    initializeFromTemplate,
+    finalizarEncuesta
   };
 });
