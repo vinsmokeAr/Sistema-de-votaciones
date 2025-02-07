@@ -128,21 +128,6 @@ function compartirEncuesta() {
         </div>
         <!-- Botones de acción -->
         <div class="d-flex justify-content-between mt-4">
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-outline-secondary"
-                    @click="showDesktopPreview = true; showMobilePreview = false"
-                    :class="{ active: showDesktopPreview }">
-                    <iconify-icon icon="mdi:desktop" class="me-1" />
-                    Vista Desktop
-                </button>
-                <button type="button" class="btn btn-outline-secondary"
-                    @click="showDesktopPreview = false; showMobilePreview = true"
-                    :class="{ active: showMobilePreview }">
-                    <iconify-icon icon="mdi:phone" class="me-1" />
-                    Vista Móvil
-                </button>
-            </div>
-
             <div>
                 <button class="btn btn-outline-primary me-2" @click="regresarOpciones">
                     <iconify-icon icon="mdi:pencil" class="me-1" />
