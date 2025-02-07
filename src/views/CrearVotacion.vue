@@ -1,137 +1,96 @@
+// CrearVotacion.vue
 <script setup>
 import { useRoute } from 'vue-router';
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from "vue-router";
 import { useSurveyStore } from '../stores/survey';
 import mockPlantillas from '../assets/mocks/plantillas.json';
-import EmojiPicker from '../components/EmojiPicker.vue';
 
 const route = useRoute();
 const router = useRouter();
 const surveyStore = useSurveyStore();
 
-const plantillasRows = computed(() => {
-	const { rows = [] } = mockPlantillas;
-	return rows;
-});
-
 const selectedTemplate = ref(null);
-const selectedEmoji = ref('twemoji:writing-hand');
-const title = ref('');
-const error = ref('');
 
 onMounted(() => {
 	const { template = "" } = route.query;
+
 	if (template == 0) {
 		selectedTemplate.value = {
 			"title": "Encuesta libre",
-			"icon": selectedEmoji.value,
-			"opciones": [
-				{
-					"title": "Opción 1",
-					"image": "/src/assets/images/opc.jpg",
-					"votes": 0
-				}
-			]
+			"icon": "twemoji:writing-hand",
+			"opciones": []
 		};
+		// Inicializar store con template vacío
+		surveyStore.updateCurrentSurvey('name', 'Nueva Encuesta');
+		surveyStore.updateCurrentSurvey('icon', 'twemoji:writing-hand');
 	} else {
-		selectedTemplate.value = plantillasRows.value.find((p) => p.id == template) || plantillasRows.value[0];
-		if (selectedTemplate.value) {
-			selectedEmoji.value = selectedTemplate.value.icon;
-			title.value = selectedTemplate.value.title;
+		const plantilla = mockPlantillas.rows.find((p) => p.id == template);
+		if (plantilla) {
+			selectedTemplate.value = plantilla;
+			// Inicializar store con datos de la plantilla
+			surveyStore.updateCurrentSurvey('name', plantilla.title);
+			surveyStore.updateCurrentSurvey('icon', plantilla.icon);
+			plantilla.opciones.forEach(opcion => {
+				surveyStore.addChoice({
+					title: opcion.title,
+					image: opcion.image
+				});
+			});
 		}
 	}
 });
 
-function onEmojiSelect(emoji) {
-	selectedEmoji.value = emoji;
-	if (selectedTemplate.value) {
-		selectedTemplate.value.icon = emoji;
-	}
-}
-
 async function preeliminar() {
 	try {
-		if (!title.value.trim()) {
-			error.value = 'Por favor, ingrese un título para la encuesta';
-			return;
-		}
-
-		if (!selectedTemplate.value.opciones.length) {
-			error.value = 'Debe agregar al menos una opción';
-			return;
-		}
-
-		// Preparar datos de la encuesta
-		const surveyData = {
-			title: title.value,
-			icon: selectedEmoji.value,
-			choices: selectedTemplate.value.opciones.map(opt => ({
-				title: opt.title,
-				image: opt.image
-			}))
-		};
-
-		// Crear la encuesta
-		const newSurvey = await surveyStore.createSurvey(surveyData);
-
-		// Navegar a la vista preliminar con el UUID de la encuesta
+		// Guardar encuesta antes de ir a vista preliminar
+		const surveyId = await surveyStore.saveSurvey();
 		router.push({
 			name: "preeliminar",
-			query: {
-				survey: newSurvey.uuid
-			}
+			query: { survey: surveyId }
 		});
-	} catch (err) {
-		error.value = err.toString();
+	} catch (error) {
+		console.error('Error al guardar la encuesta:', error);
+		// Aquí podrías mostrar un mensaje de error al usuario
 	}
 }
 
 function onAddResponse() {
-	if (!selectedTemplate.value) return;
-
-	selectedTemplate.value.opciones.push({
-		"title": "Nueva respuesta",
-		"image": "/src/assets/images/opc.jpg",
-		"votes": 0
-	});
+	surveyStore.addChoice();
 }
 
 function onDelResponse(index) {
-	const opc = selectedTemplate.value?.opciones;
-	if (index >= 0 && index < opc.length) {
-		opc.splice(index, 1);
-	}
+	surveyStore.removeChoice(index);
 }
 
-function updateOptionTitle(index, newTitle) {
-	if (selectedTemplate.value && selectedTemplate.value.opciones[index]) {
-		selectedTemplate.value.opciones[index].title = newTitle;
-	}
+function updateSurveyName(event) {
+	surveyStore.updateCurrentSurvey('name', event.target.value);
+}
+
+function updateChoiceTitle(index, event) {
+	const choices = [...surveyStore.currentSurvey.choices];
+	choices[index].title = event.target.value;
+	surveyStore.updateCurrentSurvey('choices', choices);
 }
 </script>
 
 <template>
 	<div class="container my-4 p-4 border rounded-3">
-		<div v-if="error" class="alert alert-danger">{{ error }}</div>
-
 		<div v-if="selectedTemplate" class="d-flex justify-content-start align-items-center mb-3">
-			<EmojiPicker :emoji="selectedEmoji" @on-click="onEmojiSelect" />
-			<input class="ps-3 fw-bold form-control" v-model="title" placeholder="Título de la encuesta" />
+			<iconify-icon :icon="surveyStore.currentSurvey.icon" class="me-1" width="40" />
+			<input class="ps-3 fw-bold form-control" :value="surveyStore.currentSurvey.name" @input="updateSurveyName"
+				placeholder="Título de la encuesta" />
 		</div>
 
 		<div v-if="selectedTemplate" class="mb-3 p-3 bg-light border rounded-3">
-			<li v-for="(opcion, index) in selectedTemplate.opciones" :key="index"
+			<li v-for="(opcion, index) in surveyStore.currentSurvey.choices" :key="index"
 				class="d-flex hover align-items-center mb-2">
 				<img :src="opcion.image" alt="Opción" class="p-2" style="width: 40px; height: 40px;" />
-				<input type="text" class="form-control" v-model="opcion.title"
-					@input="updateOptionTitle(index, $event.target.value)">
-				<button class="ms-auto btn btn-link text-danger float-end" @click.prevent="onDelResponse(index)"
-					:disabled="selectedTemplate.opciones.length <= 1">
+				<input type="text" class="form-control" :value="opcion.title" @input="(e) => updateChoiceTitle(index, e)">
+				<button class="ms-auto btn btn-link text-danger float-end" @click.prevent="onDelResponse(index)">
 					<iconify-icon icon="mdi:trash" />
 				</button>
 			</li>
-
 			<div class="btn-group">
 				<button class="btn btn-primary float-end d-flex align-items-center" @click.prevent="onAddResponse">
 					<iconify-icon icon="mdi:add" />
@@ -141,8 +100,8 @@ function updateOptionTitle(index, newTitle) {
 		</div>
 
 		<div class="d-flex justify-content-end mt-4">
-			<button class="btn btn-primary" @click.prevent="preeliminar">
-				Siguiente
+			<button class="btn btn-primary" @click.prevent="preeliminar" :disabled="surveyStore.loading">
+				{{ surveyStore.loading ? 'Guardando...' : 'Siguiente' }}
 			</button>
 		</div>
 	</div>
@@ -155,10 +114,5 @@ function updateOptionTitle(index, newTitle) {
 
 li {
 	list-style: none;
-}
-
-.hover:hover {
-	background-color: rgba(0, 0, 0, 0.05);
-	border-radius: 0.375rem;
 }
 </style>
