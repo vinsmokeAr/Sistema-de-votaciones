@@ -8,7 +8,7 @@ export const useSurveyStore = defineStore('survey', () => {
     uuid: null,
     name: '',
     description: '',
-    state: 'pending',
+    state: 'enabled',
     icon: 'twemoji:writing-hand',
     choices: []
   });
@@ -17,6 +17,8 @@ export const useSurveyStore = defineStore('survey', () => {
   const loading = ref(false);
   const error = ref('');
   const isEditing = ref(false);
+
+  const choicesToDelete = ref([]);
 
   // Obtener encuestas recientes
   async function getRecentSurveys() {
@@ -95,7 +97,7 @@ export const useSurveyStore = defineStore('survey', () => {
       loading.value = false;
     }
   }
-  
+
   // Obtener encuesta específica
   async function getSurvey(uuid) {
     try {
@@ -130,38 +132,39 @@ export const useSurveyStore = defineStore('survey', () => {
   }
 
   // Crear o actualizar encuesta
-  async function saveSurvey() {
-    try {
-      loading.value = true;
-      error.value = '';
+  function saveSurvey() {
+    loading.value = true;
+    error.value = '';
 
-      const surveyData = prepareSurveyData();
-      let response;
+    const surveyData = prepareSurveyData();
 
-      if (isEditing.value && currentSurvey.value.uuid) {
-        // Actualizar encuesta existente
-        response = await axiosInstance.put(
-          `/api/admin/surveys/${currentSurvey.value.uuid}`,
-          surveyData
-        );
-        return currentSurvey.value.uuid;
-      } else {
-        // Crear nueva encuesta
-        response = await axiosInstance.post('/api/admin/surveys', surveyData);
-        if (response.data.status === 'success') {
-          currentSurvey.value.uuid = response.data.data.uuid;
-          isEditing.value = true;
-          return response.data.data.uuid;
+    const request = isEditing.value && currentSurvey.value.uuid
+      ? axiosInstance.put(`/api/admin/surveys/${currentSurvey.value.uuid}`, surveyData)
+      : axiosInstance.post('/api/admin/surveys', surveyData);
+
+    return request
+      .then(({ data }) => {
+        if (data.status === 'success') {
+          if (!isEditing.value) {
+            currentSurvey.value = {
+              ...currentSurvey.value,
+              uuid: data.data.uuid
+            };
+            isEditing.value = true;
+          }
+          // Limpiar el array de opciones a eliminar después de guardar exitosamente
+          choicesToDelete.value = [];
+          return currentSurvey.value.uuid;
         }
-      }
-
-      throw new Error(response.data.message || 'Error al guardar la encuesta');
-    } catch (e) {
-      error.value = e.response?.data?.message || 'Error en el servidor';
-      throw e;
-    } finally {
-      loading.value = false;
-    }
+        throw new Error(data.message || 'Error al guardar la encuesta');
+      })
+      .catch((err) => {
+        error.value = err.response?.data?.message || 'Error en el servidor';
+        throw err;
+      })
+      .finally(() => {
+        loading.value = false;
+      });
   }
 
   // Preparar datos de la encuesta para enviar
@@ -175,9 +178,12 @@ export const useSurveyStore = defineStore('survey', () => {
         choice_id: choice.id,
         content: choice.title,
         image: choice.image
-      }))
+      })),
+      // Incluir los IDs de las opciones a eliminar
+      choices_to_delete: choicesToDelete.value
     };
   }
+
 
   function initializeFromTemplate(template) {
     isEditing.value = false;
@@ -206,12 +212,24 @@ export const useSurveyStore = defineStore('survey', () => {
 
   // Eliminar opción de la encuesta
   function removeChoice(index) {
-    currentSurvey.value.choices.splice(index, 1);
+    const choiceToRemove = currentSurvey.value.choices[index];
+
+    // Si la opción tiene ID, agregarla al array de opciones a eliminar
+    if (choiceToRemove.id) {
+      choicesToDelete.value.push(choiceToRemove.id);
+    }
+
+    // Filtrar la opción del array de choices
+    const newChoices = currentSurvey.value.choices.filter((_, i) => i !== index);
+    currentSurvey.value = {
+      ...currentSurvey.value,
+      choices: newChoices
+    };
   }
 
   // Limpiar encuesta actual
   function clearCurrentSurvey() {
-    currentSurvey.value = {
+    const emptySurvey = {
       uuid: null,
       name: '',
       description: '',
@@ -219,7 +237,11 @@ export const useSurveyStore = defineStore('survey', () => {
       icon: 'twemoji:writing-hand',
       choices: []
     };
+    currentSurvey.value = { ...emptySurvey };
+    // Limpiar también el array de opciones a eliminar
+    choicesToDelete.value = [];
     isEditing.value = false;
+    error.value = '';
   }
 
   return {
@@ -228,6 +250,7 @@ export const useSurveyStore = defineStore('survey', () => {
     loading,
     error,
     isEditing,
+    choicesToDelete,
     getSurvey,
     getRecentSurveys,
     getSurveyDetails,
