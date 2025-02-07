@@ -291,6 +291,30 @@ export const useSurveyStore = defineStore('survey', () => {
       });
   }
 
+  function deleteSurvey(surveyId) {
+    loading.value = true;
+    error.value = '';
+
+    return axiosInstance.delete(`/api/admin/surveys/${surveyId}`)
+      .then(({ data }) => {
+        if (data.status === 'success') {
+          // Remover la encuesta de la lista de recientes
+          recentSurveys.value = recentSurveys.value.filter(
+            survey => survey.survey_uuid !== surveyId
+          );
+          return true;
+        }
+        throw new Error(data.message || 'Error al eliminar la encuesta');
+      })
+      .catch((err) => {
+        error.value = err.response?.data?.message || 'Error al eliminar la encuesta';
+        throw err;
+      })
+      .finally(() => {
+        loading.value = false;
+      });
+  }
+
   return {
     currentSurvey,
     recentSurveys,
@@ -308,6 +332,7 @@ export const useSurveyStore = defineStore('survey', () => {
     removeChoice,
     clearCurrentSurvey,
     initializeFromTemplate,
-    finalizarEncuesta
+    finalizarEncuesta,
+    deleteSurvey
   };
 });
