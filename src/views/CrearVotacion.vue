@@ -11,6 +11,8 @@ const router = useRouter();
 const surveyStore = useSurveyStore();
 
 const selectedTemplate = ref(null);
+const inputImageRef = ref(null);
+const currentEditingIndex = ref(null);
 
 onMounted(() => {
 	// Si venimos de vista preliminar y ya existe una encuesta, mantener el estado
@@ -40,6 +42,48 @@ onMounted(() => {
 	}
 });
 
+async function handleImageUpload(event, index) {
+	const file = event.target.files[0];
+	if (!file) return;
+
+	// Validar tipo de archivo y tamaño
+	if (!file.type.startsWith('image/')) {
+		alert('Por favor sube solo imágenes');
+		return;
+	}
+
+	if (file.size > 5000000) { // 5MB limit
+		alert('La imagen debe ser menor a 5MB');
+		return;
+	}
+
+	try {
+		// Convertir imagen a Base64
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			const choices = [...surveyStore.currentSurvey.choices];
+			choices[index] = {
+				...choices[index],
+				image: e.target.result
+			};
+			surveyStore.updateCurrentSurvey('choices', choices);
+		};
+		reader.readAsDataURL(file);
+	} catch (error) {
+		console.error('Error al procesar la imagen:', error);
+		alert('Error al procesar la imagen');
+	}
+}
+
+function removeImage(index) {
+	const choices = [...surveyStore.currentSurvey.choices];
+	choices[index] = {
+		...choices[index],
+		image: null
+	};
+	surveyStore.updateCurrentSurvey('choices', choices);
+}
+
 async function preeliminar() {
 	try {
 		const surveyId = await surveyStore.saveSurvey();
@@ -49,7 +93,6 @@ async function preeliminar() {
 		});
 	} catch (error) {
 		console.error('Error al guardar la encuesta:', error);
-		// Aquí podrías mostrar un mensaje de error al usuario
 	}
 }
 
@@ -75,38 +118,69 @@ function cancelar() {
 	surveyStore.clearCurrentSurvey();
 	router.push({ name: 'plantillas' });
 }
+
+function triggerImageUpload(index) {
+	currentEditingIndex.value = index;
+	inputImageRef.value.click();
+}
 </script>
 
 <template>
 	<div class="container my-4 p-4 border rounded-3">
-		<div v-if="selectedTemplate" class="d-flex justify-content-start align-items-center mb-3">
-			<iconify-icon :icon="surveyStore.currentSurvey.icon" class="me-1" width="40" />
-			<input class="ps-3 fw-bold form-control" :value="surveyStore.currentSurvey.name" @input="updateSurveyName"
-				placeholder="Título de la encuesta" />
+		<!-- Input oculto para subir imágenes -->
+		<input type="file" ref="inputImageRef" @change="(e) => handleImageUpload(e, currentEditingIndex)" accept="image/*"
+			class="d-none">
+
+		<!-- Título de la encuesta -->
+		<div v-if="selectedTemplate" class="d-flex justify-content-start align-items-center mb-4">
+			<iconify-icon :icon="surveyStore.currentSurvey.icon" class="me-2" width="40" />
+			<input class="ps-3 fw-bold form-control form-control-lg" :value="surveyStore.currentSurvey.name"
+				@input="updateSurveyName" placeholder="Título de la encuesta" />
 		</div>
 
-		<div v-if="selectedTemplate" class="mb-3 p-3 bg-light border rounded-3">
-			<li v-for="(opcion, index) in surveyStore.currentSurvey.choices" :key="index"
-				class="d-flex hover align-items-center mb-2">
-				<img v-if="opcion.image" :src="opcion.image" alt="Opción" class="p-2" style="width: 40px; height: 40px;" />
-				<input type="text" class="form-control" :value="opcion.title" @input="(e) => updateChoiceTitle(index, e)">
-				<button class="ms-auto btn btn-link text-danger float-end" @click.prevent="onDelResponse(index)">
-					<iconify-icon icon="mdi:trash" />
-				</button>
-			</li>
-			<div class="btn-group">
-				<button class="btn btn-primary float-end d-flex align-items-center" @click.prevent="onAddResponse">
-					<iconify-icon icon="mdi:add" />
-					<span class="ps-2 d-none d-lg-inline">Agregar respuesta</span>
-				</button>
+		<!-- Opciones de respuesta -->
+		<div v-if="selectedTemplate" class="mb-3 p-4 bg-light border rounded-3">
+			<div v-for="(opcion, index) in surveyStore.currentSurvey.choices" :key="index"
+				class="choice-item mb-3 p-3 border rounded bg-white">
+				<div class="d-flex align-items-start">
+					<!-- Imagen de la opción -->
+					<div class="image-container me-3">
+						<div v-if="opcion.image" class="position-relative">
+							<img :src="opcion.image" alt="Opción" class="option-image rounded" @click="triggerImageUpload(index)">
+							<button class="btn btn-sm btn-danger position-absolute top-0 end-0" @click="removeImage(index)">
+								<iconify-icon icon="mdi:close" />
+							</button>
+						</div>
+						<button v-else class="btn btn-outline-primary image-placeholder" @click="triggerImageUpload(index)">
+							<iconify-icon icon="mdi:image-plus" width="24" />
+							<span class="d-block small">Agregar imagen</span>
+						</button>
+					</div>
+
+					<!-- Input de texto -->
+					<input type="text" class="form-control" :value="opcion.title" @input="(e) => updateChoiceTitle(index, e)"
+						placeholder="Escribe una opción">
+
+					<!-- Botón eliminar -->
+					<button class="btn btn-link text-danger ms-2" @click="onDelResponse(index)">
+						<iconify-icon icon="mdi:trash" width="20" />
+					</button>
+				</div>
 			</div>
+
+			<!-- Botón agregar opción -->
+			<button class="btn btn-primary d-flex align-items-center" @click="onAddResponse">
+				<iconify-icon icon="mdi:plus" class="me-1" />
+				Agregar opción
+			</button>
 		</div>
 
+		<!-- Botones de acción -->
 		<div class="d-flex justify-content-end mt-4">
 			<button class="btn btn-secondary me-2" @click="cancelar">
 				Cancelar
 			</button>
-			<button class="btn btn-primary" @click.prevent="preeliminar" :disabled="surveyStore.loading">
+			<button class="btn btn-primary" @click="preeliminar" :disabled="surveyStore.loading">
 				{{ surveyStore.loading ? 'Guardando...' : 'Vista preliminar' }}
 			</button>
 		</div>
@@ -115,10 +189,41 @@ function cancelar() {
 
 <style scoped>
 .container {
-	max-width: 700px;
+	max-width: 800px;
 }
 
-li {
-	list-style: none;
+.choice-item {
+	transition: all 0.2s ease;
+}
+
+.choice-item:hover {
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-container {
+	width: 100px;
+	height: 100px;
+	flex-shrink: 0;
+}
+
+.option-image {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	cursor: pointer;
+}
+
+.image-placeholder {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	border: 2px dashed #dee2e6;
+}
+
+.image-placeholder:hover {
+	background-color: #f8f9fa;
 }
 </style>
