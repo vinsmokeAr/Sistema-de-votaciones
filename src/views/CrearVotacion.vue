@@ -15,15 +15,39 @@ const inputImageRef = ref(null);
 const currentEditingIndex = ref(null);
 
 onMounted(() => {
-	const { template = "", edit = "" } = route.query;
+	const { template = "", edit = "", new: isNew = false } = route.query;
 
-	// Si venimos a editar una encuesta existente
+	// Si estamos editando
 	if (edit) {
 		surveyStore.getSurvey(edit);
 		return;
 	}
 
-	// Si venimos de vista preliminar y ya existe una encuesta, mantener el estado
+	// Si es una nueva creación o venimos desde plantillas, limpiar e inicializar
+	if (isNew || template) {
+		surveyStore.clearCurrentSurvey(); // Aseguramos limpiar el estado
+
+		if (template === "0") {
+			selectedTemplate.value = {
+				"title": "Encuesta libre",
+				"icon": "twemoji:writing-hand",
+				"opciones": []
+			};
+			surveyStore.initializeFromTemplate(selectedTemplate.value);
+		} else {
+			const plantilla = mockPlantillas.rows.find((p) => p.id == template);
+			if (plantilla) {
+				selectedTemplate.value = plantilla;
+				surveyStore.initializeFromTemplate(plantilla);
+			} else {
+				// Si no hay plantilla válida, redirigir al inicio
+				router.push({ name: "plantillas" });
+			}
+		}
+		return;
+	}
+
+	// Si venimos de vista preliminar y tenemos una encuesta válida
 	if (surveyStore.isEditing && surveyStore.currentSurvey.uuid) {
 		selectedTemplate.value = {
 			title: surveyStore.currentSurvey.name,
@@ -32,25 +56,15 @@ onMounted(() => {
 		return;
 	}
 
-	// Para una nueva plantilla
-	if (template === "0") {
-		selectedTemplate.value = {
-			"title": "Encuesta libre",
-			"icon": "twemoji:writing-hand",
-			"opciones": []
-		};
-		surveyStore.initializeFromTemplate(selectedTemplate.value);
-	} else {
-		const plantilla = mockPlantillas.rows.find((p) => p.id == template);
-		if (plantilla) {
-			selectedTemplate.value = plantilla;
-			surveyStore.initializeFromTemplate(plantilla);
-		} else {
-			// Si no hay plantilla válida, redirigir al inicio
-			router.push({ name: "plantillas" });
-		}
-	}
+	// Si llegamos aquí sin condiciones válidas, volver a plantillas
+	router.push({ name: "plantillas" });
 });
+
+// Función para cancelar
+function cancelar() {
+	surveyStore.clearCurrentSurvey();
+	router.push({ name: 'plantillas' });
+}
 
 async function handleImageUpload(event, index) {
 	const file = event.target.files[0];
@@ -122,11 +136,6 @@ function updateChoiceTitle(index, event) {
 	const choices = [...surveyStore.currentSurvey.choices];
 	choices[index].title = event.target.value;
 	surveyStore.updateCurrentSurvey('choices', choices);
-}
-
-function cancelar() {
-	surveyStore.clearCurrentSurvey();
-	router.push({ name: 'plantillas' });
 }
 
 function triggerImageUpload(index) {

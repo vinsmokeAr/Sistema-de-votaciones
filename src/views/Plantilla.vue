@@ -43,9 +43,13 @@ onMounted(async () => {
 });
 
 function onClickTemplate(template) {
-	// Limpiar el estado actual antes de inicializar la nueva plantilla
+	// Primero limpiamos el estado actual
 	surveyStore.clearCurrentSurvey();
-	router.push({ name: "crear-votacion", query: { template } });
+	// Luego navegamos
+	router.push({
+		name: "crear-votacion",
+		query: { template, new: true } // Agregamos flag para indicar nueva creación
+	});
 }
 
 function verResultados(votacionId) {
