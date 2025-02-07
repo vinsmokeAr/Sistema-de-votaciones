@@ -15,6 +15,14 @@ const inputImageRef = ref(null);
 const currentEditingIndex = ref(null);
 
 onMounted(() => {
+	const { template = "", edit = "" } = route.query;
+
+	// Si venimos a editar una encuesta existente
+	if (edit) {
+		surveyStore.getSurvey(edit);
+		return;
+	}
+
 	// Si venimos de vista preliminar y ya existe una encuesta, mantener el estado
 	if (surveyStore.isEditing && surveyStore.currentSurvey.uuid) {
 		selectedTemplate.value = {
@@ -24,9 +32,8 @@ onMounted(() => {
 		return;
 	}
 
-	const { template = "" } = route.query;
-
-	if (template == 0) {
+	// Para una nueva plantilla
+	if (template === "0") {
 		selectedTemplate.value = {
 			"title": "Encuesta libre",
 			"icon": "twemoji:writing-hand",
@@ -38,6 +45,9 @@ onMounted(() => {
 		if (plantilla) {
 			selectedTemplate.value = plantilla;
 			surveyStore.initializeFromTemplate(plantilla);
+		} else {
+			// Si no hay plantilla válida, redirigir al inicio
+			router.push({ name: "plantillas" });
 		}
 	}
 });

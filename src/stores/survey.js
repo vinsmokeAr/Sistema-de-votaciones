@@ -186,18 +186,26 @@ export const useSurveyStore = defineStore('survey', () => {
 
 
   function initializeFromTemplate(template) {
-    isEditing.value = false;
-    currentSurvey.value = {
-      uuid: null,
+    // Primero limpiar completamente el estado
+    clearCurrentSurvey();
+
+    const newSurvey = {
+      uuid: null, // Asegurarse que el uuid sea null
       name: template.title || 'Nueva Encuesta',
       description: '',
       state: 'pending',
       icon: template.icon || 'twemoji:writing-hand',
       choices: template.opciones?.map(opcion => ({
+        id: null, // Asegurarse que los ids sean null
         title: opcion.title,
         image: opcion.image
       })) || []
     };
+
+    // Asignar el nuevo survey con una nueva referencia
+    currentSurvey.value = { ...newSurvey };
+    isEditing.value = false; // Asegurarse que no estamos en modo edición
+    choicesToDelete.value = []; // Limpiar las opciones a eliminar
   }
 
   // Actualizar campos de la encuesta actual

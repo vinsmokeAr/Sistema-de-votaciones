@@ -43,6 +43,8 @@ onMounted(async () => {
 });
 
 function onClickTemplate(template) {
+	// Limpiar el estado actual antes de inicializar la nueva plantilla
+	surveyStore.clearCurrentSurvey();
 	router.push({ name: "crear-votacion", query: { template } });
 }
 
