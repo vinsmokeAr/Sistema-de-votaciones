@@ -5,6 +5,7 @@ import axiosInstance from '../services/axios';
 
 export const useSurveyStore = defineStore('survey', () => {
   const currentSurvey = ref({
+    uuid: null,
     name: '',
     description: '',
     state: 'pending',
@@ -14,6 +15,7 @@ export const useSurveyStore = defineStore('survey', () => {
 
   const loading = ref(false);
   const error = ref('');
+  const isEditing = ref(false);
 
   // Obtener encuesta específica
   async function getSurvey(uuid) {
@@ -24,6 +26,20 @@ export const useSurveyStore = defineStore('survey', () => {
       const { data } = await axiosInstance.get(`/api/surveys/${uuid}`);
 
       if (data.status === 'success') {
+        // Actualizar el estado actual con los datos recibidos
+        currentSurvey.value = {
+          uuid: data.data.survey_uuid,
+          name: data.data.name,
+          description: data.data.description,
+          state: data.data.current_state,
+          icon: data.data.icon,
+          choices: data.data.choices.map(choice => ({
+            id: choice.choice_id,
+            title: choice.content,
+            image: choice.image
+          }))
+        };
+        isEditing.value = true;
         return data.data;
       }
 
@@ -36,19 +52,33 @@ export const useSurveyStore = defineStore('survey', () => {
     }
   }
 
-  // Crear nueva encuesta
-  async function createSurvey(surveyData) {
+  // Crear o actualizar encuesta
+  async function saveSurvey() {
     try {
       loading.value = true;
       error.value = '';
 
-      const { data } = await axiosInstance.post('/api/admin/surveys', surveyData);
+      const surveyData = prepareSurveyData();
+      let response;
 
-      if (data.status === 'success') {
-        return data.data.uuid;
+      if (isEditing.value && currentSurvey.value.uuid) {
+        // Actualizar encuesta existente
+        response = await axiosInstance.put(
+          `/api/admin/surveys/${currentSurvey.value.uuid}`,
+          surveyData
+        );
+        return currentSurvey.value.uuid;
+      } else {
+        // Crear nueva encuesta
+        response = await axiosInstance.post('/api/admin/surveys', surveyData);
+        if (response.data.status === 'success') {
+          currentSurvey.value.uuid = response.data.data.uuid;
+          isEditing.value = true;
+          return response.data.data.uuid;
+        }
       }
 
-      throw new Error(data.message || 'Error al crear la encuesta');
+      throw new Error(response.data.message || 'Error al guardar la encuesta');
     } catch (e) {
       error.value = e.response?.data?.message || 'Error en el servidor';
       throw e;
@@ -65,21 +95,26 @@ export const useSurveyStore = defineStore('survey', () => {
       state: currentSurvey.value.state,
       icon: currentSurvey.value.icon,
       choices: currentSurvey.value.choices.map(choice => ({
+        choice_id: choice.id,
         content: choice.title,
         image: choice.image
       }))
     };
   }
 
-  // Guardar encuesta actual
-  async function saveSurvey() {
-    try {
-      const surveyData = prepareSurveyData();
-      const uuid = await createSurvey(surveyData);
-      return uuid;
-    } catch (e) {
-      throw e;
-    }
+  function initializeFromTemplate(template) {
+    isEditing.value = false;
+    currentSurvey.value = {
+      uuid: null,
+      name: template.title || 'Nueva Encuesta',
+      description: '',
+      state: 'pending',
+      icon: template.icon || 'twemoji:writing-hand',
+      choices: template.opciones?.map(opcion => ({
+        title: opcion.title,
+        image: opcion.image
+      })) || []
+    };
   }
 
   // Actualizar campos de la encuesta actual
@@ -100,23 +135,27 @@ export const useSurveyStore = defineStore('survey', () => {
   // Limpiar encuesta actual
   function clearCurrentSurvey() {
     currentSurvey.value = {
+      uuid: null,
       name: '',
       description: '',
       state: 'pending',
       icon: 'twemoji:writing-hand',
       choices: []
     };
+    isEditing.value = false;
   }
 
   return {
     currentSurvey,
     loading,
     error,
-    getSurvey,        // Añadimos getSurvey al return
+    isEditing,
+    getSurvey,
     saveSurvey,
     updateCurrentSurvey,
     addChoice,
     removeChoice,
-    clearCurrentSurvey
+    clearCurrentSurvey,
+    initializeFromTemplate
   };
 });
