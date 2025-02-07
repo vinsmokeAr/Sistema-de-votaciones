@@ -13,10 +13,89 @@ export const useSurveyStore = defineStore('survey', () => {
     choices: []
   });
 
+  const recentSurveys = ref([]);
   const loading = ref(false);
   const error = ref('');
   const isEditing = ref(false);
 
+  // Obtener encuestas recientes
+  async function getRecentSurveys() {
+    try {
+      loading.value = true;
+      const { data } = await axiosInstance.get('/api/admin/surveys', {
+        params: {
+          limit: 10,
+          sort: 'date_created',
+          order: 'desc'
+        }
+      });
+
+      if (data.status === 'success') {
+        recentSurveys.value = data.data;
+      } else {
+        throw new Error(data.message || 'Error al cargar las encuestas');
+      }
+    } catch (err) {
+      console.error('Error en getRecentSurveys:', err);
+      error.value = err.message;
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Obtener detalles de una encuesta específica
+  async function getSurveyDetails(surveyId) {
+    try {
+      loading.value = true;
+      const { data } = await axiosInstance.get(`/api/admin/surveys/${surveyId}`);
+
+      if (data.status === 'success') {
+        // Actualizar la encuesta en la lista de recientes si existe
+        const index = recentSurveys.value.findIndex(s => s.survey_uuid === surveyId);
+        if (index !== -1) {
+          recentSurveys.value[index] = data.data;
+        }
+        return data.data;
+      } else {
+        throw new Error(data.message || 'Error al cargar los detalles de la encuesta');
+      }
+    } catch (err) {
+      console.error('Error en getSurveyDetails:', err);
+      error.value = err.message;
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Actualizar estado de una encuesta
+  async function updateSurveyState(surveyId, newState) {
+    try {
+      loading.value = true;
+      const { data } = await axiosInstance.put(`/api/admin/surveys/${surveyId}`, {
+        current_state: newState
+      });
+
+      if (data.status === 'success') {
+        // Actualizar el estado en la lista de recientes
+        const index = recentSurveys.value.findIndex(s => s.survey_uuid === surveyId);
+        if (index !== -1) {
+          recentSurveys.value[index].current_state = newState;
+        }
+        return true;
+      } else {
+        throw new Error(data.message || 'Error al actualizar el estado de la encuesta');
+      }
+    } catch (err) {
+      console.error('Error en updateSurveyState:', err);
+      error.value = err.message;
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+  
   // Obtener encuesta específica
   async function getSurvey(uuid) {
     try {
@@ -26,7 +105,6 @@ export const useSurveyStore = defineStore('survey', () => {
       const { data } = await axiosInstance.get(`/api/surveys/${uuid}`);
 
       if (data.status === 'success') {
-        // Actualizar el estado actual con los datos recibidos
         currentSurvey.value = {
           uuid: data.data.survey_uuid,
           name: data.data.name,
@@ -36,16 +114,15 @@ export const useSurveyStore = defineStore('survey', () => {
           choices: data.data.choices.map(choice => ({
             id: choice.choice_id,
             title: choice.content,
-            image: choice.image
+            image: choice.image,
+            total_selections: choice.total_selections
           }))
         };
         isEditing.value = true;
         return data.data;
       }
-
-      throw new Error(data.message || 'Error al obtener la encuesta');
     } catch (e) {
-      error.value = e.response?.data?.message || 'Error en el servidor';
+      error.value = e.response?.data?.message || 'Error al cargar la encuesta';
       throw e;
     } finally {
       loading.value = false;
@@ -147,10 +224,14 @@ export const useSurveyStore = defineStore('survey', () => {
 
   return {
     currentSurvey,
+    recentSurveys,
     loading,
     error,
     isEditing,
     getSurvey,
+    getRecentSurveys,
+    getSurveyDetails,
+    updateSurveyState,
     saveSurvey,
     updateCurrentSurvey,
     addChoice,
